@@ -1,16 +1,9 @@
-# zhihu_daily
+# zhihu_daily  
 
-A new Flutter project.
+使用 Flutter 编写的知乎日报非官方客户端，学习 Flutter 时的练手 Demo.  
 
-## Getting Started
+- [项目要求](https://www.yuque.com/arobot25/twtmobile/zhihu_daily_starter?singleDoc#%20%E3%80%8A%E7%BB%99%E6%96%B0%E6%89%8B%E7%9A%84%E7%9F%A5%E4%B9%8E%E6%97%A5%E6%8A%A52024%E3%80%8B)  
 
-This project is a starting point for a Flutter application.
+- [api参考](https://github.com/RQ527/ZHIHUAPI)  
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- 半成品，完善中。  
