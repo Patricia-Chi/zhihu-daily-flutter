@@ -1,0 +1,503 @@
+import 'package:flutter/material.dart';
+import 'package:zhihu_daily/api/zhihu_api.dart';
+import 'package:zhihu_daily/pages/detail_page.dart';
+
+/// ------------------------------
+/// 首页
+/// ------------------------------
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: const HomeBody(),
+    );
+  }
+}
+
+/// ------------------------------
+/// 页面主体内容
+/// ------------------------------
+/*class HomeBody extends StatefulWidget {
+  const HomeBody({super.key});
+
+  @override
+  State<HomeBody> createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends State<HomeBody> {
+  Map<String, dynamic>? latestData; // 存放从 API 获取的数据
+
+  // 请求之前的帖子
+  List<Map<String, dynamic>> dayList = [];
+  String? lastDate; // 用于 before 请求
+  bool isLoadingMore = false;
+
+  final ScrollController _scrollController = ScrollController();
+  // 请求之前的帖子
+
+  @override
+  void initState() {
+    super.initState();
+    loadLatest();
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 100) {
+        loadBefore();
+      }
+    });
+  }
+
+
+  Future<void> loadLatest() async {
+    final data = await ZhihuApi.getLatestNews();
+
+    setState(() {
+      dayList.add(data);
+      lastDate = data["date"];
+    });
+  }
+
+
+  Future<void> loadBefore() async {
+    if (isLoadingMore || lastDate == null) return;
+
+    setState(() => isLoadingMore = true);
+
+    final data = await ZhihuApi.getBeforeNews(lastDate!);
+
+    setState(() {
+      dayList.add(data);
+      lastDate = data["date"];
+      isLoadingMore = false;
+    });
+  }
+
+
+  /*@override
+  Widget build(BuildContext context) {
+    if (latestData == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final banners = latestData!["top_stories"];
+    final stories = latestData!["stories"];
+
+    return ListView(
+      children: [
+        _HomeHeader(date: latestData!["date"]),
+        _BannerSlider(banners: banners),
+        _NewsList(stories: stories),
+      ],
+    );
+  }*/
+  @override
+  Widget build(BuildContext context) {
+    if (dayList.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      itemCount: dayList.length,
+      itemBuilder: (context, index) {
+        final dayData = dayList[index];
+        final date = dayData["date"];
+        final banners = index == 0 ? dayData["top_stories"] : null;
+        final stories = dayData["stories"];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 日期标题
+            _DateDivider(date: date),
+
+            // 第一天才显示顶部 Banner
+            if (banners != null) _BannerSlider(banners: banners),
+
+            // 文章列表
+            _NewsList(stories: stories),
+          ],
+        );
+      },
+    );
+  }
+
+}*/
+class HomeBody extends StatefulWidget {
+  const HomeBody({super.key});
+
+  @override
+  State<HomeBody> createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends State<HomeBody> {
+  Map<String, dynamic>? latestData;
+
+  /// 所有之前的日期数据：昨天、前天...
+  List<Map<String, dynamic>> historyList = [];
+
+  String? lastDate; // 用于 before API
+  bool isLoadingMore = false;
+
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    loadLatest();
+
+    /// 监听滚到最底部加载历史新闻
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 100) {
+        loadBefore();
+      }
+    });
+  }
+
+  /// 获取今日新闻
+  Future<void> loadLatest() async {
+    final data = await ZhihuApi.getLatestNews();
+    setState(() {
+      latestData = data;
+      lastDate = data["date"];
+    });
+  }
+
+  /// 加载 yesterday / before yesterday
+  Future<void> loadBefore() async {
+    if (isLoadingMore || lastDate == null) return;
+
+    setState(() => isLoadingMore = true);
+
+    final before = await ZhihuApi.getBeforeNews(lastDate!);
+
+    setState(() {
+      historyList.add(before);
+      lastDate = before["date"];
+      isLoadingMore = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (latestData == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final banners = latestData!["top_stories"];
+    final stories = latestData!["stories"];
+
+    return ListView(
+      controller: _scrollController,
+      children: [
+        /// -------------------------
+        /// 今日头部
+        /// -------------------------
+        _HomeHeader(date: latestData!["date"]),
+
+        /// -------------------------
+        /// 今日 Banner
+        /// -------------------------
+        _BannerSlider(banners: banners),
+
+        /// -------------------------
+        /// 今日文章列表
+        /// -------------------------
+        _NewsList(stories: stories),
+
+        /// -------------------------------------------
+        /// 往下滚动后，开始依次加入 昨天 / 前天 的分隔条 + 文章
+        /// -------------------------------------------
+        ...historyList.map((day) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _DateDivider(date: day["date"]),
+              _NewsList(stories: day["stories"]),
+            ],
+          );
+        }).toList(),
+
+        if (isLoadingMore)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+      ],
+    );
+  }
+}
+
+
+
+/// ------------------------------
+/// 今日热闻标题部分
+/// ------------------------------
+///
+
+class _HomeHeader extends StatelessWidget {
+  final String date;
+
+  const _HomeHeader({super.key, required this.date});
+
+  String _getMonthName(int month) {
+    const months = [
+      "一月","二月","三月","四月","五月","六月",
+      "七月","八月","九月","十月","十一月","十二月"
+    ];
+    return months[month - 1];
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) return "早上好！";
+    if (hour >= 12 && hour < 18) return "下午好！";
+    return "晚上好！";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final year = int.parse(date.substring(0,4));
+    final month = int.parse(date.substring(4,6));
+    final day = int.parse(date.substring(6,8));
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("$day",
+                  style: const TextStyle(
+                      fontSize: 32, fontWeight: FontWeight.bold)),
+              Text(
+                _getMonthName(month),
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
+              )
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              _getGreeting(),
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+            ),
+          ),
+          CircleAvatar(
+            radius: 20,
+            backgroundImage:
+              Image.asset('lib/images/avatar.png').image,
+            //NetworkImage("https://i.pravatar.cc/100"),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+// 分割条
+class _DateDivider extends StatelessWidget {
+  final String date;
+
+  const _DateDivider({super.key, required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final m = int.parse(date.substring(4, 6));
+    final d = int.parse(date.substring(6, 8));
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      child: Row(
+        children: [
+          // 左侧日期
+          Text(
+            "$m月$d日",
+            style: const TextStyle(
+              fontSize: 15,
+              color: Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // 右侧横线
+          Expanded(
+            child: Container(
+              height: 1,
+              color: Colors.grey.shade300,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+
+/// ------------------------------
+/// Banner（PageView）
+/// ------------------------------
+class _BannerSlider extends StatefulWidget {
+  final List<dynamic> banners;
+
+  const _BannerSlider({super.key, required this.banners});
+
+  @override
+  State<_BannerSlider> createState() => _BannerSliderState();
+}
+
+class _BannerSliderState extends State<_BannerSlider> {
+  final PageController _controller = PageController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 250,
+      child: PageView.builder(
+        controller: _controller,
+        itemCount: widget.banners.length,
+        itemBuilder: (context, index) {
+          final item = widget.banners[index];
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0),
+            child: ClipRRect(
+              child: Image.network(
+                item["image"],
+                fit: BoxFit.cover,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+
+/// ------------------------------
+/// 新闻列表
+/// ------------------------------
+class _NewsList extends StatelessWidget {
+  final List<dynamic> stories;
+
+  const _NewsList({super.key, required this.stories});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: stories.map((news) {
+        return _NewsItem(
+          title: news["title"],
+          hint: news["hint"],
+          imageUrl: news["images"][0],
+          id: news["id"],
+        );
+      }).toList(),
+    );
+  }
+}
+
+
+/// ------------------------------
+/// 新闻单个 item
+/// ------------------------------
+class _NewsItem extends StatelessWidget {
+  final String title;
+  final String hint;
+  final String imageUrl;
+  final int id;
+
+  const _NewsItem({
+    super.key,
+    required this.title,
+    required this.hint,
+    required this.imageUrl,
+    required this.id,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+        onTap: () {
+          // 点击跳转
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => NewsDetailPage(id: id),
+            ),
+          );
+        },
+        child: Container(
+
+          margin: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+          child: Row(
+            children: [
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // 作者 + 阅读时长
+                    Text(
+                      hint,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+
+
+              ),
+
+              const SizedBox(width: 15),
+
+              ClipRRect(
+                child: Image.network(
+                  imageUrl,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                ),
+              ),
+
+            ],
+          ),
+        ),
+    );
+
+  }
+}
