@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:zhihu_daily/api/zhihu_api.dart';
-import 'package:zhihu_daily/pages/detail_page.dart';
+// 首页组件
+import 'package:zhihu_daily/components/home_header.dart';
+import 'package:zhihu_daily/components/banner_slider.dart';
+import 'package:zhihu_daily/components/news_list.dart';
+import 'package:zhihu_daily/components/date_divider.dart';
 
-/// ------------------------------
-/// 首页
-/// ------------------------------
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -16,10 +17,7 @@ class HomePage extends StatelessWidget {
   }
 }
 
-/// ------------------------------
-/// 页面主体内容
-/// ------------------------------
-/*class HomeBody extends StatefulWidget {
+class HomeBody extends StatefulWidget {
   const HomeBody({super.key});
 
   @override
@@ -27,21 +25,16 @@ class HomePage extends StatelessWidget {
 }
 
 class _HomeBodyState extends State<HomeBody> {
-  Map<String, dynamic>? latestData; // 存放从 API 获取的数据
-
-  // 请求之前的帖子
-  List<Map<String, dynamic>> dayList = [];
-  String? lastDate; // 用于 before 请求
+  Map<String, dynamic>? latestData; // 存放新闻列表，每加载一天就往里加一项
+  List<Map<String, dynamic>> historyList = [];
+  String? lastDate;
   bool isLoadingMore = false;
-
-  final ScrollController _scrollController = ScrollController();
-  // 请求之前的帖子
+  final ScrollController _scrollController = ScrollController();// 滚动控制器，监听是否滑到底部
 
   @override
   void initState() {
     super.initState();
     loadLatest();
-
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent - 100) {
@@ -50,33 +43,26 @@ class _HomeBodyState extends State<HomeBody> {
     });
   }
 
-
   Future<void> loadLatest() async {
     final data = await ZhihuApi.getLatestNews();
-
     setState(() {
-      dayList.add(data);
+      latestData = data;
       lastDate = data["date"];
     });
   }
 
-
   Future<void> loadBefore() async {
     if (isLoadingMore || lastDate == null) return;
-
     setState(() => isLoadingMore = true);
-
-    final data = await ZhihuApi.getBeforeNews(lastDate!);
-
+    final before = await ZhihuApi.getBeforeNews(lastDate!);
     setState(() {
-      dayList.add(data);
-      lastDate = data["date"];
+      historyList.add(before);
+      lastDate = before["date"];
       isLoadingMore = false;
     });
   }
 
-
-  /*@override
+  @override
   Widget build(BuildContext context) {
     if (latestData == null) {
       return const Center(child: CircularProgressIndicator());
@@ -86,57 +72,64 @@ class _HomeBodyState extends State<HomeBody> {
     final stories = latestData!["stories"];
 
     return ListView(
+      controller: _scrollController,
       children: [
-        _HomeHeader(date: latestData!["date"]),
-        _BannerSlider(banners: banners),
-        _NewsList(stories: stories),
+        // 头部
+        HomeHeader(date: latestData!["date"]),
+        // 图片滚动栏
+        BannerSlider(banners: banners),
+        // 今日文章
+        NewsList(stories: stories),
+        // 以往文章
+        ...historyList.map((day) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DateDivider(date: day["date"]),
+              NewsList(stories: day["stories"]),
+            ],
+          );
+        }).toList(),
+        if (isLoadingMore)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
       ],
     );
-  }*/
+  }
+}
+
+
+/*import 'package:flutter/material.dart';
+import 'package:zhihu_daily/api/zhihu_api.dart';
+import 'package:zhihu_daily/pages/detail_page.dart';
+
+// 首页
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
   @override
   Widget build(BuildContext context) {
-    if (dayList.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return ListView.builder(
-      controller: _scrollController,
-      itemCount: dayList.length,
-      itemBuilder: (context, index) {
-        final dayData = dayList[index];
-        final date = dayData["date"];
-        final banners = index == 0 ? dayData["top_stories"] : null;
-        final stories = dayData["stories"];
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 日期标题
-            _DateDivider(date: date),
-
-            // 第一天才显示顶部 Banner
-            if (banners != null) _BannerSlider(banners: banners),
-
-            // 文章列表
-            _NewsList(stories: stories),
-          ],
-        );
-      },
+    return Scaffold(
+      body: const HomeBody(),
     );
   }
+}
 
-}*/
+// 首页
 class HomeBody extends StatefulWidget {
   const HomeBody({super.key});
 
   @override
+
   State<HomeBody> createState() => _HomeBodyState();
 }
 
 class _HomeBodyState extends State<HomeBody> {
   Map<String, dynamic>? latestData;
 
-  /// 所有之前的日期数据：昨天、前天...
+  // 之前的数据
   List<Map<String, dynamic>> historyList = [];
 
   String? lastDate; // 用于 before API
@@ -149,7 +142,7 @@ class _HomeBodyState extends State<HomeBody> {
     super.initState();
     loadLatest();
 
-    /// 监听滚到最底部加载历史新闻
+    // 加载历史新闻，滚动到底部
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent - 100) {
@@ -158,7 +151,7 @@ class _HomeBodyState extends State<HomeBody> {
     });
   }
 
-  /// 获取今日新闻
+  // 获取今日新闻
   Future<void> loadLatest() async {
     final data = await ZhihuApi.getLatestNews();
     setState(() {
@@ -167,7 +160,7 @@ class _HomeBodyState extends State<HomeBody> {
     });
   }
 
-  /// 加载 yesterday / before yesterday
+  // 获取之前的新闻
   Future<void> loadBefore() async {
     if (isLoadingMore || lastDate == null) return;
 
@@ -194,24 +187,16 @@ class _HomeBodyState extends State<HomeBody> {
     return ListView(
       controller: _scrollController,
       children: [
-        /// -------------------------
-        /// 今日头部
-        /// -------------------------
+        // 头部
         _HomeHeader(date: latestData!["date"]),
 
-        /// -------------------------
-        /// 今日 Banner
-        /// -------------------------
+        // 图片滚动栏
         _BannerSlider(banners: banners),
 
-        /// -------------------------
-        /// 今日文章列表
-        /// -------------------------
+        // 今日文章
         _NewsList(stories: stories),
 
-        /// -------------------------------------------
-        /// 往下滚动后，开始依次加入 昨天 / 前天 的分隔条 + 文章
-        /// -------------------------------------------
+        // 以前文章
         ...historyList.map((day) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,34 +219,30 @@ class _HomeBodyState extends State<HomeBody> {
 
 
 
-/// ------------------------------
-/// 今日热闻标题部分
-/// ------------------------------
-///
+// appbar
 
 class _HomeHeader extends StatelessWidget {
   final String date;
 
   const _HomeHeader({super.key, required this.date});
 
+  // 月份
   String _getMonthName(int month) {
-    const months = [
-      "一月","二月","三月","四月","五月","六月",
-      "七月","八月","九月","十月","十一月","十二月"
-    ];
-    return months[month - 1];
+    const months = ["error","一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+    return months[month];
   }
 
+  // 问候语
   String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 12) return "早上好！";
+    final hour = DateTime.now().hour;  // 获取当前时间，如：2025-11-27 16:43:12.123
+    if (hour >= 3 && hour < 12) return "早上好！";
     if (hour >= 12 && hour < 18) return "下午好！";
     return "晚上好！";
   }
 
   @override
   Widget build(BuildContext context) {
-    final year = int.parse(date.substring(0,4));
+    // final year = int.parse(date.substring(0,4));
     final month = int.parse(date.substring(4,6));
     final day = int.parse(date.substring(6,8));
 
@@ -271,26 +252,44 @@ class _HomeHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text("$day",
                   style: const TextStyle(
-                      fontSize: 32, fontWeight: FontWeight.bold)),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold
+                  )
+              ),
               Text(
                 _getMonthName(month),
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
+                style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    height: 0.7
+                ),
               )
             ],
           ),
-          const SizedBox(width: 16),
+          // const SizedBox(width: 16),
+          const SizedBox(width: 12),
+
+          // 中间竖线
+          Container(
+            width: 1,
+            height: 35,
+            color: Colors.grey.shade300, // 浅灰色
+          ),
+
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               _getGreeting(),
-              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
             ),
           ),
-          CircleAvatar(
-            radius: 20,
+          CircleAvatar(// 头像，随便弄的
+            radius: 15,
             backgroundImage:
               Image.asset('lib/images/avatar.png').image,
             //NetworkImage("https://i.pravatar.cc/100"),
@@ -345,9 +344,7 @@ class _DateDivider extends StatelessWidget {
 
 
 
-/// ------------------------------
-/// Banner（PageView）
-/// ------------------------------
+// 图片滚动栏
 class _BannerSlider extends StatefulWidget {
   final List<dynamic> banners;
 
@@ -369,7 +366,7 @@ class _BannerSliderState extends State<_BannerSlider> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 250,
+      height: 300,
       child: PageView.builder(
         controller: _controller,
         itemCount: widget.banners.length,
@@ -501,3 +498,4 @@ class _NewsItem extends StatelessWidget {
 
   }
 }
+*/

@@ -5,14 +5,13 @@ class ZhihuApi {
     BaseOptions(baseUrl: "https://news-at.zhihu.com/api/4/news/"),
   );
 
-  /// 今日热闻
+  // 今日新闻
   static Future<Map<String, dynamic>> getLatestNews() async {
     final res = await _dio.get("latest");
     return res.data;
   }
 
-  /// 获取某一天之前的新闻
-  /// 注意：传入 20230425 得到 20230424 的内容
+  // 获取之前的新闻，注意：传入20230425，得到24号的内容
   static Future<Map<String, dynamic>> getBeforeNews(String date) async {
     final res = await _dio.get("before/$date");
     return res.data;
